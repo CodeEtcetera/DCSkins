@@ -151,6 +151,9 @@ public abstract class CommonServer {
 			dataCache.onSave();
 			lastDataCacheUpdate = System.currentTimeMillis();
 		}
+		
+		// Save the config if needed
+		DCSkinsConfig.getInstance().onSave();
 	}
 	
 	// Handle a request for data

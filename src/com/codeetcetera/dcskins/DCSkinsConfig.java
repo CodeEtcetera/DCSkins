@@ -26,7 +26,7 @@ public abstract class DCSkinsConfig {
 		DCSkinsConfig.instance = this;
 		defaults = new HashMap<String, Object>();
 		defaults.put("client.waitforservertime", 3000);
-		defaults.put("main.debug", false);
+		defaults.put("main.debug", true);
 		defaults.put("cache.subdirectory", "cache/");
 		defaults.put("cache.keycache.class",
 				"com.codeetcetera.dcskins.cache.FileKeyCache");

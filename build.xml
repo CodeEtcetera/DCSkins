@@ -1,0 +1,34 @@
+<project name="DCSkins">
+	<property file="build.properties"/>
+	<property name="forge_home">${user.home}/forge/mcp</property>
+	<property name="mod_home">${user.home}/mods/DCSkins</property>
+
+	<target name="compile">
+		<delete dir="${mod_home}/class" />
+		<mkdir dir="${mod_home}/class" />
+		<exec executable="./recompile.sh" dir="${forge_home}" />
+		<exec executable="./reobfuscate_srg.sh" dir="${forge_home}" />
+		<copy todir="class">
+			<fileset dir="${forge_home}/reobf/minecraft/" includes="**" />
+		</copy>
+	</target>
+
+	<target name="jar" depends="compile">
+		<delete file="${mod_home}/DCSkins*.jar" />
+		<jar destfile="${mod_home}/DCSkins${build.mcversion}-${build.major}.${build.minor}.${build.revision}.jar">
+			<fileset dir="${mod_home}/class" />
+			<fileset dir="${mod_home}/resources" />
+			<manifest>
+				<attribute name="FMLCorePlugin"
+					 value="com.codeetcetera.dcskins.asm.DCSkinsPlugin" />
+			</manifest>
+		</jar>
+		<delete dir="${mod_home}/class" />
+	</target>
+
+	<target name="install" depends="jar">
+		<copy file="${mod_home}/DCSkins${build.mcversion}-${build.major}.${build.minor}.${build.revision}.jar" todir="${user.home}/.minecraft/coremods" />
+	<copy file="${mod_home}/DCSkins${build.mcversion}-${build.major}.${build.minor}.${build.revision}.jar" todir="${user.home}/.minecraft_server/coremods" />
+	<copy file="${mod_home}/DCSkins${build.mcversion}-${build.major}.${build.minor}.${build.revision}.jar" todir="${user.home}/.minecraft_bukkit/plugins" />
+	</target>
+</project>
