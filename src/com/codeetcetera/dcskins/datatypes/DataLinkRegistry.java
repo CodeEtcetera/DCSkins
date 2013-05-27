@@ -18,8 +18,9 @@ public class DataLinkRegistry {
 	private final DataTypeRegistry dataTypeManager;
 	private final LinkedList<DataLinkEntry> links;
 	
-	private final Pattern defaultPattern;
-	
+	/**
+	 * @return The global instance of the DataLinkRegistry
+	 */
 	public static DataLinkRegistry getInstance() {
 		if(DataLinkRegistry.instance == null) {
 			DataLinkRegistry.instance = new DataLinkRegistry();
@@ -28,36 +29,36 @@ public class DataLinkRegistry {
 		return DataLinkRegistry.instance;
 	}
 	
-	/**
-	 * 
-	 */
-	public DataLinkRegistry() {
+	private DataLinkRegistry() {
 		dataTypeManager = DataTypeRegistry.getInstance();
 		
 		links = new LinkedList<DataLinkEntry>();
-		
-		defaultPattern = Pattern.compile(".+/(.+)\\.png");
 	}
 	
 	/**
-	 * @param link
-	 * @throws Exception
+	 * Register a new link between an url pattern and a data type
+	 * 
+	 * @param urlPattern
+	 *            The pattern for the url. This pattern should contain a
+	 *            capturing group for the username. For syntax see
+	 *            java.util.regex.Pattern
+	 * @param dataType
+	 *            The data type this url should match to. Default data type's
+	 *            are SkinDataType.TYPE_SKIN and CapeDataType.TYPE_CAPE
 	 */
-	public void register(final IPatternDataLink link) {
-		byte idx = link.getIdentifier();
-		
-		if(idx < 0 || idx > 15) {
+	public void register(final String urlPattern, final byte dataType) {
+		if(dataType < 0 || dataType > 15) {
 			throw new IllegalArgumentException(
-					"Data link has an indentifier outside the 0-15 range");
+					"Data link has an dataType outside the 0-15 range");
 		}
 		
-		if(dataTypeManager.getDataType(idx) == null) {
+		if(dataTypeManager.getDataType(dataType) == null) {
 			throw new IllegalArgumentException(
-					"Data link identifier is not known");
+					"Data link dataType is not known");
 		}
 		
-		Pattern pat = Pattern.compile(link.getPattern());
-		DataLinkEntry entry = new DataLinkEntry(pat, idx);
+		Pattern pat = Pattern.compile(urlPattern);
+		DataLinkEntry entry = new DataLinkEntry(pat, dataType);
 		links.add(entry);
 	}
 	
@@ -72,21 +73,6 @@ public class DataLinkRegistry {
 			if(m.matches() && m.groupCount() > 0) {
 				result = new DataLinkResult(m.group(1), e.getIdentifier());
 				break;
-			}
-		}
-		
-		// No link found, try the default user extractor & type indicators
-		if(result == null) {
-			m = defaultPattern.matcher(url);
-			if(m.matches()) {
-				for(Byte id : dataTypeManager.getIdentifiers()) {
-					for(String word : dataTypeManager.getDataType(id)
-														.urlIndicators()) {
-						if(url.indexOf(word) >= 0) {
-							result = new DataLinkResult(m.group(1), id);
-						}
-					}
-				}
 			}
 		}
 		
@@ -107,14 +93,14 @@ public class DataLinkRegistry {
 		}
 		
 		/**
-		 * @return the pattern
+		 * @return The pattern
 		 */
 		public Pattern getPattern() {
 			return pattern;
 		}
 		
 		/**
-		 * @return the identifier
+		 * @return The identifier
 		 */
 		public byte getIdentifier() {
 			return identifier;

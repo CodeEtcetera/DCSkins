@@ -2,7 +2,7 @@
  * File: DCSkinsImageThread.java
  * 
  */
-package com.codeetcetera.dcskins.asm;
+package com.codeetcetera.dcskins;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -17,9 +17,6 @@ import net.minecraft.client.renderer.ThreadDownloadImageData;
 
 import com.google.common.base.Throwables;
 
-import com.codeetcetera.dcskins.CommonClient;
-import com.codeetcetera.dcskins.DCSkinsCore;
-import com.codeetcetera.dcskins.DCSkinsLog;
 import com.codeetcetera.dcskins.datatypes.DataLinkRegistry;
 import com.codeetcetera.dcskins.datatypes.DataLinkResult;
 
@@ -50,7 +47,7 @@ public class DCSkinsImageThread implements Runnable {
 	 */
 	@Override
 	public void run() {
-		CommonClient client = DCSkinsCore.getClient();
+		CommonClient client = CommonClient.getInstance();
 		DataLinkRegistry dataLinkManager = DataLinkRegistry.getInstance();
 		
 		DCSkinsLog.debug("Request for %s", url);
@@ -65,30 +62,34 @@ public class DCSkinsImageThread implements Runnable {
 			try {
 				d = client.getData(res.getUser(), res.getIdentifier());
 			} catch(IOException e) {
-				DCSkinsLog.warning("Error on client cache retrieval: %s",
+				DCSkinsLog.warning("Error on client cache retrieval: \n%s",
 						Throwables.getStackTraceAsString(e));
 			}
 		}
 		
-		if(d == null || d.length == 0) {
+		if((d == null || d.length == 0)
+				&& !DCSkinsConfig.getInstance().getBoolProp("main.offline")) {
 			DCSkinsLog.debug("Data could not be retreived from the DCSkins"
 					+ " system");
 			if(res == null) {
 				// We don't know the user or dataType, so we can't cache it
 				httpGrab(true);
 				return;
-			} else {
-				// We do know the user and dataType, save the data in the cache
-				d = httpGrab(false);
-				
-				DCSkinsLog.debug("Put data from http");
-				try {
-					client.setData(res.getUser(), res.getIdentifier(), d);
-				} catch(IOException e) {
-					DCSkinsLog.warning("Error on client data cache: %s",
-							Throwables.getStackTraceAsString(e));
-				}
 			}
+			// We do know the user and dataType, save the data in the cache
+			d = httpGrab(false);
+			
+			DCSkinsLog.debug("Put data from http");
+			try {
+				client.setData(res.getUser(), res.getIdentifier(), d);
+			} catch(IOException e) {
+				DCSkinsLog.warning("Error on client data cache: \n%s",
+						Throwables.getStackTraceAsString(e));
+			}
+		}
+		
+		if(d == null || d.length == 0) {
+			return;
 		}
 		
 		ByteArrayInputStream stream = new ByteArrayInputStream(d);

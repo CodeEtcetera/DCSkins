@@ -12,7 +12,7 @@ import java.io.OutputStream;
  * @author CodeEtcetera
  * 
  */
-public class NoCompressionStream implements ICompressionStreamProvider {
+public class NoCompression implements ICompression {
 	
 	/*
 	 * (non-Javadoc)

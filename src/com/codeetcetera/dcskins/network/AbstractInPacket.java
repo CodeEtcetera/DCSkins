@@ -1,5 +1,5 @@
 /**
- * File: InPacket.java
+ * File: AbstractInPacket.java
  * 
  */
 package com.codeetcetera.dcskins.network;
@@ -8,28 +8,28 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 
-import com.codeetcetera.dcskins.compression.CompressionRegistry;
-import com.codeetcetera.dcskins.compression.ICompressionStreamProvider;
-
 /**
  * @author CodeEtcetera
  * 
  */
-public abstract class InPacket extends Packet {
+public abstract class AbstractInPacket extends Packet {
 	private final ByteArrayInputStream bin;
-	protected final DataInputStream in;
+	protected DataInputStream in;
+	protected final byte compressionIdx;
 	
-	public InPacket(final byte[] data) throws IOException {
+	public AbstractInPacket(final byte[] data) {
 		bin = new ByteArrayInputStream(data);
+		
 		byte first = (byte) bin.read();
 		protocolVersion = (byte) (first >> 4);
-		compression = (byte) (first & 0xF);
+		compressionIdx = (byte) (first & 0xF);
 		packetType = (byte) bin.read();
-		
-		// Wrap stream with correct decompression
-		ICompressionStreamProvider compressionProvider =
-			CompressionRegistry.getInstance().getCompression(compression);
-		in = new DataInputStream(compressionProvider.getInputStream(bin));
+	}
+	
+	protected void buildInputStream() throws IOException {
+		in =
+			new DataInputStream(compression.getCompression()
+											.getInputStream(bin));
 	}
 	
 	/**

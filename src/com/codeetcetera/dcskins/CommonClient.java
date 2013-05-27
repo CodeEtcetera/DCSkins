@@ -6,11 +6,19 @@ package com.codeetcetera.dcskins;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 
+import net.minecraft.client.Minecraft;
+
+import com.codeetcetera.dcskins.compression.CompressionEntry;
+import com.codeetcetera.dcskins.compression.CompressionRegistry;
+import com.codeetcetera.dcskins.datatypes.DataLinkRegistry;
+import com.codeetcetera.dcskins.datatypes.SkinDataType;
+import com.codeetcetera.dcskins.network.AbstractInPacket;
 import com.codeetcetera.dcskins.network.DiscoveryPacket;
-import com.codeetcetera.dcskins.network.InPacket;
 import com.codeetcetera.dcskins.network.Packet;
 import com.codeetcetera.dcskins.network.PushPacket;
 import com.codeetcetera.dcskins.network.Request;
@@ -22,69 +30,95 @@ import com.codeetcetera.dcskins.network.VerifyPacket;
  * 
  */
 public class CommonClient extends CommonServer {
+	private static CommonClient instance;
+	
 	protected String user;
 	protected byte[][] locals;
-	protected LinkedList<Request> requests;
+	protected List<Request> requests;
 	protected boolean contactServer;
-	protected byte compressionId;
+	protected CompressionEntry compressionUsed;
 	
 	private final int timeout;
+	private boolean handshakeDone;
+	
+	public static CommonClient getInstance() {
+		return instance;
+	}
 	
 	/**
 	 * @throws Exception
 	 */
 	public CommonClient() throws Exception {
+		CommonClient.instance = this;
+		
 		user = null;
 		locals = new byte[16][];
-		requests = new LinkedList<Request>();
+		requests = Collections.synchronizedList(new LinkedList<Request>());
 		contactServer = false;
 		
-		compressionId = 0;
+		handshakeDone = false;
 		
 		timeout =
 			DCSkinsConfig.getInstance().getIntProp("client.waitforservertime");
+		
+		DataLinkRegistry linkReg = DataLinkRegistry.getInstance();
+		linkReg.register(
+				"http://skins.minecraft.net/MinecraftSkins/(.+)\\.png",
+				SkinDataType.TYPE_SKIN);
+		linkReg.register(
+				"http://skins.minecraft.net/MinecraftCloaks/(.+)\\.png",
+				SkinDataType.TYPE_SKIN);
+		
+		DCSkinsLog.debug("CommonClient Constructed");
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.codeetcetera.dcskins.CommonServer#init()
+	 */
+	@Override
+	public void init() throws Exception {
+		super.init();
+		
+		user = Minecraft.getMinecraft().session.username;
+		DCSkinsLog.debug("USER: %s", user);
+		
+		// Load the local data
+		for(Byte id : dataTypeRegistry.getIdentifiers()) {
+			locals[id] = localDataReader.readLocal(user, id);
+			if(locals[id] != null) {
+				DCSkinsLog.debug("Read local data for type %d", id);
+				// Update local cache
+				updateCache(user, id, locals[id]);
+			}
+		}
+		
+		// Save local cache
+		onSave();
 	}
 	
 	/**
 	 * @param user
 	 * @throws IOException
 	 */
-	public void onLogin(final String user) throws IOException {
-		this.user = null;
-		
+	public void onLogin() throws IOException {
 		// Send a DSC to the server
 		Request req = new Request("", (byte) 0);
 		insertRequest(req);
 		packetSender.sendToServer(new DiscoveryPacket());
-		
-		// Wait for the DSC to return
-		waitForData(req);
-		
-		// Load the local data
-		for(Byte id : dataTypeRegistry.getIdentifiers()) {
-			locals[id] = localDataReader.readLocal(user, id);
-			if(locals[id] != null) {
-				updateCache(user, id, locals[id]);
-				// Update local cache & server cache
-				if(contactServer) {
-					pushLocalData(id, locals[id]);
-				}
-			}
-		}
-		
-		// Save local cache
-		onSave();
-		
-		this.user = user;
-		synchronized(this) {
-			notifyAll();
-		}
+		DCSkinsLog.debug("DSC send!");
 	}
 	
 	/**
 	 * @throws IOException
 	 */
 	public void onLogout() throws IOException {
+		DCSkinsLog.debug("Logout!");
+		handshakeDone = false;
+		CompressionRegistry.getInstance().resetRemote();
+		requests.clear();
+		contactServer = false;
 		onSave();
 	}
 	
@@ -96,18 +130,20 @@ public class CommonClient extends CommonServer {
 	 */
 	public byte[] getData(final String user, final byte dataType)
 			throws IOException {
+		DCSkinsLog.debug("Client grabbing %d for %s", dataType, user);
 		// Client logged in event not triggered yet, wait for it to finish
-		if(this.user == null) {
+		while(!handshakeDone) {
 			synchronized(this) {
 				try {
 					// Double check
-					if(this.user == null) {
+					if(!handshakeDone) {
 						wait();
 					}
 				} catch(InterruptedException ignored) {
 				}
 			}
 		}
+		DCSkinsLog.debug("Client is logged in, handle request...");
 		
 		byte[] data = null;
 		
@@ -163,11 +199,15 @@ public class CommonClient extends CommonServer {
 				dataCache.insert(newKey, dataType, data);
 			}
 		}
+		
+		if(contactServer) {
+			pushLocalData(dataType, data);
+		}
 	}
 	
 	@Override
 	protected void handlePacket(final byte dataType, final String user,
-			final InPacket packet) throws IOException {
+			final AbstractInPacket packet) throws IOException {
 		if(packet.getPacketType() != Packet.PACKETTYPE_RSP) {
 			super.handlePacket(dataType, user, packet);
 		} else {
@@ -176,6 +216,8 @@ public class CommonClient extends CommonServer {
 			if(request == null) {
 				return;
 			}
+			
+			DCSkinsLog.debug("Handle response for request %s", request);
 			
 			request.setResponseType(packet.getStream().readByte());
 			
@@ -191,7 +233,7 @@ public class CommonClient extends CommonServer {
 	}
 	
 	private void handleResponsePacket(final Request request,
-			final InPacket packet) throws IOException {
+			final AbstractInPacket packet) throws IOException {
 		DataInputStream in = packet.getStream();
 		byte[] resp = null;
 		
@@ -202,32 +244,41 @@ public class CommonClient extends CommonServer {
 		} else if(request.getResponseType() == Packet.RESPONSE_DISCOVERY) {
 			String keyGen = in.readUTF();
 			if(!keyGen.equals(this.keyGen.getName())) {
-				DCSkinsLog.warning("The server uses a different key generator, "
+				DCSkinsLog.severe("The server uses a different key generator, "
 						+ "i can't communicate with that!");
 				return;
 			}
 			
-			// TODO: Load priority from config & apply priority
 			final byte num = in.readByte();
-			String[] compressions = new String[num];
-			byte[] serverIndices = new byte[num];
-			String compressionUsed = null;
-			byte serverIdx = -1;
 			for(byte i = 0; i < num; i++) {
-				compressions[i] = in.readUTF();
-				serverIndices[i] = in.readByte();
-				if(serverIndices[i] > serverIdx) {
-					serverIdx = serverIndices[i];
-					compressionUsed = compressions[i];
+				String compression = in.readUTF();
+				compressionRegistry.addRemote(compression, in.readByte());
+			}
+			
+			compressionUsed = compressionRegistry.getPreferencedCompression();
+			if(compressionUsed == null) {
+				DCSkinsLog.severe("The server can't provide any compressions"
+						+ " we support. I can't connect!");
+				return;
+			}
+			// We can send packets to the server now
+			contactServer = true;
+			
+			// Notify waiting threads
+			handshakeDone = true;
+			synchronized(this) {
+				notifyAll();
+			}
+			
+			// Push out local data to the server
+			for(Byte id : dataTypeRegistry.getIdentifiers()) {
+				locals[id] = localDataReader.readLocal(user, id);
+				if(locals[id] != null) {
+					pushLocalData(id, locals[id]);
 				}
 			}
 			
-			byte clientIdx =
-				compressionRegistry.getCompressionIdx(compressionUsed);
-			compressionRegistry.swap(clientIdx, serverIdx);
-			compressionId = serverIdx;
-			// We can send packets to the server now
-			contactServer = true;
+			DCSkinsLog.debug("Received DSC response!");
 		}
 		
 		request.setResponse(resp);
@@ -250,7 +301,7 @@ public class CommonClient extends CommonServer {
 			Request request = new Request(user, dataType);
 			// Build the request packet
 			VerifyPacket packet =
-				new VerifyPacket(compressionId, dataType, user, key);
+				new VerifyPacket(compressionUsed, dataType, user, key);
 			// Insert the request to the pending requests
 			insertRequest(request);
 			// Send the actual request
@@ -289,7 +340,7 @@ public class CommonClient extends CommonServer {
 			Request request = new Request(user, dataType);
 			// Build the request packet
 			RequestPacket packet =
-				new RequestPacket(compressionId, dataType, user);
+				new RequestPacket(compressionUsed, dataType, user);
 			// Insert the request to the pending requests
 			insertRequest(request);
 			// Send the actual request
@@ -315,8 +366,8 @@ public class CommonClient extends CommonServer {
 		DCSkinsLog.debug("Push local data type=%d", dataType);
 		
 		// Build the request packet
-		packetSender.sendToServer(new PushPacket(compressionId, dataType, user,
-				data));
+		packetSender.sendToServer(new PushPacket(compressionUsed, dataType,
+				user, data));
 	}
 	
 	private void waitForData(final Request req) {
@@ -324,6 +375,7 @@ public class CommonClient extends CommonServer {
 			try {
 				req.wait(timeout);
 			} catch(InterruptedException e) {
+				// This doesn't trigger as expected
 				DCSkinsLog.warning("Server did not respond within " + timeout
 						+ " ms");
 			}
@@ -331,24 +383,20 @@ public class CommonClient extends CommonServer {
 	}
 	
 	private void insertRequest(final Request req) {
-		synchronized(requests) {
-			requests.add(req);
-		}
+		requests.add(req);
 	}
 	
 	private Request getRequest(final String user, final byte dataType) {
 		if(requests.size() == 0) {
 			return null;
 		}
-		synchronized(requests) {
-			Request r;
-			Iterator<Request> i = requests.iterator();
-			while(i.hasNext()) {
-				r = i.next();
-				if(r.getUser().equals(user) && r.getDataType() == dataType) {
-					i.remove();
-					return r;
-				}
+		Request r;
+		Iterator<Request> i = requests.iterator();
+		while(i.hasNext()) {
+			r = i.next();
+			if(r.getUser().equals(user) && r.getDataType() == dataType) {
+				i.remove();
+				return r;
 			}
 		}
 		return null;

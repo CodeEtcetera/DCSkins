@@ -30,14 +30,4 @@ public class CapeDataType implements IDataType {
 	public byte getDataType() {
 		return CapeDataType.TYPE_CAPE;
 	}
-	
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.codeetcetera.dcskins.api.IDataType#urlIndicators()
-	 */
-	@Override
-	public String[] urlIndicators() {
-		return new String[] {"cape", "cloack"};
-	}
 }

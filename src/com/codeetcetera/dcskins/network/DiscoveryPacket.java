@@ -6,27 +6,29 @@ package com.codeetcetera.dcskins.network;
 
 import java.io.IOException;
 
+import com.codeetcetera.dcskins.compression.CompressionEntry;
 import com.codeetcetera.dcskins.compression.CompressionRegistry;
-import com.codeetcetera.dcskins.compression.ICompressionStreamProvider;
 
 /**
  * @author CodeEtcetera
  * 
  */
-public class DiscoveryPacket extends OutPacket {
+public class DiscoveryPacket extends AbstractOutPacket {
 	/**
 	 * @param compression
 	 * @param packetType
 	 * @throws IOException
 	 */
 	public DiscoveryPacket() throws IOException {
-		super((byte) 0, Packet.PACKETTYPE_DSC);
+		super(null, Packet.PACKETTYPE_DSC);
+		buildPacket((byte) 0);
+		
 		CompressionRegistry reg = CompressionRegistry.getInstance();
 		out.writeByte(reg.getNumCompressions());
 		for(byte i = 0; i < 16; i++) {
-			ICompressionStreamProvider compression = reg.getCompression(i);
+			CompressionEntry compression = reg.getCompressionLocal(i);
 			if(compression != null) {
-				out.writeUTF(compression.getName());
+				out.writeUTF(compression.getCompression().getName());
 			}
 		}
 		finishPacket();

@@ -28,8 +28,7 @@ public class ClientClassTransformer implements IClassTransformer {
 				new ClassWriter(ClassWriter.COMPUTE_MAXS
 						| ClassWriter.COMPUTE_FRAMES);
 			ImageDataClassTransformer trans =
-				new ImageDataClassTransformer(writer, transformedName.replace(
-						".", "/"), name);
+				new ImageDataClassTransformer(writer);
 			reader.accept(trans, 0);
 			return writer.toByteArray();
 		}

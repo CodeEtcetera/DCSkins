@@ -6,19 +6,21 @@ package com.codeetcetera.dcskins.network;
 
 import java.io.IOException;
 
+import com.codeetcetera.dcskins.compression.CompressionEntry;
+
 /**
  * @author CodeEtcetera
  * 
  */
-public class PushPacket extends DataOutPacket {
+public class PushPacket extends ClientOutPacket {
 	/**
 	 * @param compression
-	 * @param packetType
 	 * @param dataType
 	 * @param user
+	 * @param data
 	 * @throws IOException
 	 */
-	public PushPacket(final byte compression, final byte dataType,
+	public PushPacket(final CompressionEntry compression, final byte dataType,
 			final String user, final byte[] data) throws IOException {
 		super(compression, Packet.PACKETTYPE_PSH, dataType, user);
 		out.writeInt(data.length);

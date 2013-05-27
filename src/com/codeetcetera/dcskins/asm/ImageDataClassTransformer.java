@@ -13,18 +13,13 @@ import org.objectweb.asm.Opcodes;
  * 
  */
 public class ImageDataClassTransformer extends ClassVisitor {
-	private final String oldClassName;
-	private final String oldClassNameObf;
 	
 	/**
 	 * @param api
 	 * @param cv
 	 */
-	public ImageDataClassTransformer(final ClassVisitor cv,
-			final String oldClassName, final String oldClassNameObf) {
+	public ImageDataClassTransformer(final ClassVisitor cv) {
 		super(Opcodes.ASM4, cv);
-		this.oldClassName = oldClassName;
-		this.oldClassNameObf = oldClassNameObf;
 	}
 	
 	/*
@@ -39,7 +34,7 @@ public class ImageDataClassTransformer extends ClassVisitor {
 		MethodVisitor mv =
 			super.visitMethod(access, name, desc, signature, exceptions);
 		if(name.equals("<init>")) {
-			return new ImageDataMethodAdapter(mv, oldClassName, oldClassNameObf);
+			return new ImageDataMethodAdapter(mv);
 		}
 		
 		return mv;

@@ -14,7 +14,7 @@ import java.util.Map.Entry;
 
 import com.codeetcetera.dcskins.DCSkinsConfig;
 import com.codeetcetera.dcskins.DCSkinsLog;
-import com.codeetcetera.dcskins.compression.ICompressionStreamProvider;
+import com.codeetcetera.dcskins.compression.ICompression;
 import com.codeetcetera.dcskins.datatypes.DataTypeRegistry;
 
 /**
@@ -30,7 +30,7 @@ public class FileKeyCache implements IKeyCache {
 	private final HashMap<Byte, HashMap<String, Integer>> keyUses;
 	
 	private final IKeyGenerator keyGen;
-	private final ICompressionStreamProvider streamProvider;
+	private final ICompression streamProvider;
 	
 	private final String cacheDir;
 	
@@ -40,7 +40,7 @@ public class FileKeyCache implements IKeyCache {
 	 * @param keyGen
 	 * @throws IOException
 	 */
-	public FileKeyCache(final ICompressionStreamProvider streamProvider,
+	public FileKeyCache(final ICompression streamProvider,
 			final IKeyGenerator keyGen) throws IOException {
 		this.keyGen = keyGen;
 		this.streamProvider = streamProvider;

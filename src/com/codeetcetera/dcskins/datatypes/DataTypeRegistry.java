@@ -1,5 +1,5 @@
 /**
- * File: DataTypeManager.java
+ * File: DataTypeRegistry.java
  * 
  */
 package com.codeetcetera.dcskins.datatypes;
@@ -17,12 +17,13 @@ public class DataTypeRegistry {
 	private final ArrayList<Byte> dataTypeIdentifiers;
 	
 	/**
-	 * @return The global instance of DataTypeManager
+	 * @return The global instance of the DataTypeRegistry
 	 */
 	public static DataTypeRegistry getInstance() {
 		if(DataTypeRegistry.instance == null) {
 			DataTypeRegistry.instance = new DataTypeRegistry();
 		}
+		
 		return DataTypeRegistry.instance;
 	}
 	

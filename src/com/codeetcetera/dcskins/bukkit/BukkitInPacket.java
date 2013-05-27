@@ -8,13 +8,13 @@ import java.io.IOException;
 
 import org.bukkit.entity.Player;
 
-import com.codeetcetera.dcskins.network.InPacket;
+import com.codeetcetera.dcskins.network.ServerInPacket;
 
 /**
  * @author CodeEtcetera
  * 
  */
-public class BukkitInPacket extends InPacket {
+public class BukkitInPacket extends ServerInPacket {
 	private final Player player;
 	
 	/**

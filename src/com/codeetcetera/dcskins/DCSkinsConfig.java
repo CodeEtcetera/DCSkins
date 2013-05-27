@@ -25,8 +25,9 @@ public abstract class DCSkinsConfig {
 	public DCSkinsConfig() {
 		DCSkinsConfig.instance = this;
 		defaults = new HashMap<String, Object>();
-		defaults.put("client.waitforservertime", 3000);
+		defaults.put("client.waitforservertime", 30000);
 		defaults.put("main.debug", true);
+		defaults.put("main.offline", true);
 		defaults.put("cache.subdirectory", "cache/");
 		defaults.put("cache.keycache.class",
 				"com.codeetcetera.dcskins.cache.FileKeyCache");
@@ -34,6 +35,14 @@ public abstract class DCSkinsConfig {
 				"com.codeetcetera.dcskins.cache.FileDataCache");
 		defaults.put("cache.keygen.class",
 				"com.codeetcetera.dcskins.cache.SHAKeyGenerator");
+		defaults.put("cache.compression.class",
+				"com.codeetcetera.dcskins.compression.GzipCompression");
+		HashMap<String, Integer> compressions = new HashMap<String, Integer>();
+		compressions.put(
+				"com.codeetcetera.dcskins.compression.GzipCompression", 1);
+		compressions.put("com.codeetcetera.dcskins.compression.NoCompression",
+				10);
+		defaults.put("compression.preference", compressions);
 	}
 	
 	protected boolean isClientProp(final String name) {
@@ -41,6 +50,8 @@ public abstract class DCSkinsConfig {
 	}
 	
 	public abstract int getIntProp(String name);
+	
+	public abstract int getIntProp(String cat, String name);
 	
 	public abstract String getStringProp(String name);
 	

@@ -14,7 +14,7 @@ import java.util.zip.GZIPOutputStream;
  * @author CodeEtcetera
  * 
  */
-public class GzipCompressionStream implements ICompressionStreamProvider {
+public class GzipCompression implements ICompression {
 	/*
 	 * (non-Javadoc)
 	 * 

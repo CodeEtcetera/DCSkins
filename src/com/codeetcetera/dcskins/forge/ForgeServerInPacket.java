@@ -1,12 +1,12 @@
 /**
- * File: ForgeInPacket.java
+ * File: ForgeServerInPacket.java
  * 
  */
 package com.codeetcetera.dcskins.forge;
 
 import java.io.IOException;
 
-import com.codeetcetera.dcskins.network.InPacket;
+import com.codeetcetera.dcskins.network.ServerInPacket;
 
 import cpw.mods.fml.common.network.Player;
 
@@ -14,14 +14,15 @@ import cpw.mods.fml.common.network.Player;
  * @author CodeEtcetera
  * 
  */
-public class ForgeInPacket extends InPacket {
+public class ForgeServerInPacket extends ServerInPacket {
 	private final Player player;
 	
 	/**
 	 * @param data
 	 * @throws IOException
 	 */
-	public ForgeInPacket(final byte[] data, final Player p) throws IOException {
+	public ForgeServerInPacket(final byte[] data, final Player p)
+			throws IOException {
 		super(data);
 		player = p;
 	}

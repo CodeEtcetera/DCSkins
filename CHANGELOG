@@ -1,0 +1,29 @@
+v1.2.2
+	+ Started signing commits with GPG
+	+ Added LICENSE to build
+	+ Javadocs for registering classes (API)
+	+ Don't register links as separate objects anymore 
+	+ Fixed bug where the class adaption would not trigger
+	+ Fixed compression system
+	+ Other minor code adaptions 
+
+v1.2.1
+	+ Start fixing bugs with Forge
+	+ Shared config system (Forge & bukkit)
+	+ Shared log system (Forge & bukkit)
+	+ ant build file
+
+v1.2.0
+	Major rewrite
+	+ Bukkit support 
+	+ Start compression support
+	+ Version 2 protocol
+		+ Discovery packet
+
+v1.1.0
+	Major rewrite
+	+ Client skin insertion using ASM (class adaption)
+	+ Register data types
+	+ Register links (URL-datatype)
+v1.0.0
+	Original idea, bugged version, not finished

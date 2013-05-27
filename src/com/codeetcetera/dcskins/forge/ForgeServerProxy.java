@@ -73,7 +73,7 @@ public class ForgeServerProxy extends CommonServer implements IPacketHandler {
 	public void onPacketData(final INetworkManager manager,
 			final Packet250CustomPayload packet, final Player player) {
 		try {
-			onIncomingPacket(new ForgeInPacket(packet.data, player));
+			onIncomingPacket(new ForgeServerInPacket(packet.data, player));
 		} catch(IOException e) {
 			DCSkinsLog.warning("Error on incoming packet: %s",
 					Throwables.getStackTraceAsString(e));

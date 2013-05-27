@@ -4,10 +4,11 @@
  */
 package com.codeetcetera.dcskins.bukkit;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.bukkit.configuration.MemoryConfiguration;
+import org.bukkit.configuration.ConfigurationSection;
 
 import com.codeetcetera.dcskins.DCSkinsConfig;
 
@@ -28,22 +29,35 @@ public final class BukkitConfig extends DCSkinsConfig {
 		defaults.put("main.directory", "plugins/DCSkins/");
 		
 		boolean changed = false;
-		MemoryConfiguration mconfig = new MemoryConfiguration();
 		
 		Iterator<Entry<String, Object>> i = defaults.entrySet().iterator();
 		while(i.hasNext()) {
 			Entry<String, Object> e = i.next();
 			if(!isClientProp(e.getKey())) {
-				mconfig.set(e.getKey(), e.getValue());
-				
 				if(!core.getConfig().contains(e.getKey())) {
-					core.getConfig().set(e.getKey(), e.getValue());
+					if(e.getValue() instanceof HashMap<?, ?>) {
+						// Create the new section
+						ConfigurationSection sect =
+							core.getConfig().createSection(e.getKey());
+						
+						Iterator<Entry<String, Object>> iSub =
+							((HashMap<String, Object>) e.getValue()).entrySet()
+																	.iterator();
+						// Loop over all the items of the new section and insert
+						// them
+						while(iSub.hasNext()) {
+							Entry<String, Object> eSub = iSub.next();
+							sect.set(eSub.getKey(), e.getValue());
+						}
+					} else {
+						core.getConfig().set(e.getKey(), e.getValue());
+					}
 					changed = true;
+					
 				}
 			}
 		}
 		
-		core.getConfig().setDefaults(mconfig);
 		if(changed) {
 			core.saveConfig();
 		}
@@ -80,6 +94,23 @@ public final class BukkitConfig extends DCSkinsConfig {
 	@Override
 	public boolean getBoolProp(final String name) {
 		return core.getConfig().getBoolean(name);
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.codeetcetera.dcskins.DCSkinsConfig#getIntProp(java.lang.String,
+	 * java.lang.String)
+	 */
+	@Override
+	public int getIntProp(final String cat, final String name) {
+		ConfigurationSection sect =
+			core.getConfig().getConfigurationSection(name);
+		if(sect == null) {
+			return 0;
+		}
+		
+		return sect.getInt(name);
 	}
 	
 	/*

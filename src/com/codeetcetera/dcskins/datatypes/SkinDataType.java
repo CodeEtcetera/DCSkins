@@ -30,14 +30,4 @@ public class SkinDataType implements IDataType {
 	public byte getDataType() {
 		return SkinDataType.TYPE_SKIN;
 	}
-	
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.codeetcetera.dcskins.api.IDataType#urlIndicators()
-	 */
-	@Override
-	public String[] urlIndicators() {
-		return new String[] {"skin"};
-	}
 }

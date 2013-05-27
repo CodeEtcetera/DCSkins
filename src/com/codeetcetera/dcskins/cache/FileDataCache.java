@@ -12,7 +12,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 import com.codeetcetera.dcskins.DCSkinsConfig;
-import com.codeetcetera.dcskins.compression.ICompressionStreamProvider;
+import com.codeetcetera.dcskins.compression.ICompression;
 import com.codeetcetera.dcskins.datatypes.DataTypeRegistry;
 import com.codeetcetera.dcskins.datatypes.IDataType;
 
@@ -23,7 +23,7 @@ import com.codeetcetera.dcskins.datatypes.IDataType;
 public class FileDataCache implements IDataCache {
 	private final DataTypeRegistry dataTypeManager;
 	
-	private final ICompressionStreamProvider streamProvider;
+	private final ICompression streamProvider;
 	
 	private final String cacheDir;
 	
@@ -32,7 +32,7 @@ public class FileDataCache implements IDataCache {
 	/**
 	 * 
 	 */
-	public FileDataCache(final ICompressionStreamProvider streamProvider) {
+	public FileDataCache(final ICompression streamProvider) {
 		this.streamProvider = streamProvider;
 		cacheDir =
 			DCSkinsConfig.getInstance().getStringProp("cache.subdirectory");

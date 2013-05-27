@@ -8,9 +8,7 @@ import java.io.IOException;
 
 import com.google.common.eventbus.Subscribe;
 
-import com.codeetcetera.dcskins.CommonClient;
 import com.codeetcetera.dcskins.CommonServer;
-import com.codeetcetera.dcskins.DCSkinsCore;
 import com.codeetcetera.dcskins.DCSkinsLog;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -31,7 +29,7 @@ public class ForgeDCSkins {
 	
 	public static ForgeDCSkins getInstance() {
 		if(instance == null) {
-			instance = new ForgeDCSkins();
+			new ForgeDCSkins();
 		}
 		
 		return instance;
@@ -42,11 +40,12 @@ public class ForgeDCSkins {
 	 */
 	public ForgeDCSkins() {
 		ForgeDCSkins.instance = this;
+		
+		new ForgeDCSLog();
 	}
 	
 	@Subscribe
 	public void preInit(final FMLPreInitializationEvent event) throws Exception {
-		new ForgeDCSLog();
 		new ForgeConfig(event.getSuggestedConfigurationFile());
 		DCSkinsLog.info("Log file: %s", event.getSuggestedConfigurationFile()
 												.getPath());
@@ -59,7 +58,6 @@ public class ForgeDCSkins {
 		if(side == Side.CLIENT) {
 			DCSkinsLog.debug("Client side found");
 			proxy = new ForgeClientProxy();
-			DCSkinsCore.setClientProxy((CommonClient) proxy);
 		} else if(side == Side.SERVER) {
 			DCSkinsLog.debug("Server side found");
 			proxy = new ForgeServerProxy();

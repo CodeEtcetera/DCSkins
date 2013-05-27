@@ -4,7 +4,12 @@
  */
 package com.codeetcetera.dcskins.compression;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
+
+import com.codeetcetera.dcskins.DCSkinsConfig;
+import com.codeetcetera.dcskins.DCSkinsLog;
 
 /**
  * @author CodeEtcetera
@@ -13,10 +18,18 @@ import java.util.HashMap;
 public class CompressionRegistry {
 	private static CompressionRegistry instance;
 	
-	private final HashMap<String, Byte> compressionNames;
-	private final ICompressionStreamProvider[] compressions;
+	private final DCSkinsConfig config;
+	
+	private final HashMap<String, CompressionEntry> compressionNames;
+	private final CompressionEntry[] localCompressions;
+	private CompressionEntry[] remoteCompressions;
+	private LinkedList<CompressionEntry> prefList;
+	
 	private byte writePtr;
 	
+	/**
+	 * @return The global instance of the CompressionRegistry
+	 */
 	public static CompressionRegistry getInstance() {
 		if(CompressionRegistry.instance == null) {
 			CompressionRegistry.instance = new CompressionRegistry();
@@ -25,19 +38,125 @@ public class CompressionRegistry {
 		return CompressionRegistry.instance;
 	}
 	
-	/**
-	 * 
-	 */
-	public CompressionRegistry() {
-		compressionNames = new HashMap<String, Byte>();
-		compressions = new ICompressionStreamProvider[16];
+	private CompressionRegistry() {
+		config = DCSkinsConfig.getInstance();
+		compressionNames = new HashMap<String, CompressionEntry>(5);
+		localCompressions = new CompressionEntry[16];
 		writePtr = 0;
 	}
 	
 	/**
-	 * @param compression
+	 * Reset all the remote indices of the compressions. This is called when the
+	 * client loses it's connection
 	 */
-	public void register(final ICompressionStreamProvider compression)
+	public void resetRemote() {
+		prefList = null;
+		remoteCompressions = null;
+		for(byte i = 0; i < 16; i++) {
+			if(localCompressions[i] != null) {
+				localCompressions[i].setRemoteIdx((byte) -1);
+			}
+		}
+	}
+	
+	/**
+	 * Add a remote compression entry from it's compression's name.
+	 * 
+	 * @see com.codeetcetera.dcskins.compression.CompressionRegistry#addRemote(CompressionEntry,
+	 *      byte)
+	 * @param name
+	 *            The name of the compression
+	 * @param remoteIdx
+	 *            The idx the remote end knows this compression under
+	 */
+	public void addRemote(final String name, final byte remoteIdx) {
+		addRemote(getCompression(name), remoteIdx);
+	}
+	
+	/**
+	 * Add a remote compression entry. The is called when the client knows the
+	 * remote end supports a compression (on DSC response)
+	 * 
+	 * @param compression
+	 *            The compression entry. This has to be from a registered
+	 *            compression
+	 * @param remoteIdx
+	 *            The idx the remote end knows this compression under
+	 */
+	public void addRemote(final CompressionEntry compression,
+			final byte remoteIdx) {
+		checkIdxRange(remoteIdx);
+		
+		if(prefList == null) {
+			prefList = new LinkedList<CompressionEntry>();
+		}
+		if(remoteCompressions == null) {
+			remoteCompressions = new CompressionEntry[16];
+		}
+		
+		remoteCompressions[remoteIdx] = compression;
+		compression.setRemoteIdx(remoteIdx);
+		prefList.add(compression);
+	}
+	
+	/**
+	 * Get the preferred compression entry of all the added remote compression
+	 * entry's
+	 * 
+	 * @return The preferred compression entry
+	 */
+	public CompressionEntry getPreferencedCompression() {
+		if(prefList == null) {
+			return null;
+		}
+		Collections.sort(prefList);
+		return prefList.getFirst();
+	}
+	
+	/**
+	 * Get a compression entry by it's remote id
+	 * 
+	 * @param idx
+	 * @return The compression entry or null if the compression does not exists
+	 */
+	public CompressionEntry getCompressionRemote(final byte idx) {
+		checkIdxRange(idx);
+		
+		if(remoteCompressions == null || remoteCompressions[idx] == null) {
+			return null;
+		}
+		
+		return remoteCompressions[idx];
+	}
+	
+	/**
+	 * Get a compression entry by it's local id
+	 * 
+	 * @param idx
+	 * @return The compression entry or null if the compression does not exists
+	 */
+	public CompressionEntry getCompressionLocal(final byte idx) {
+		checkIdxRange(idx);
+		
+		return localCompressions[idx];
+	}
+	
+	private void checkIdxRange(final byte idx) {
+		if(idx < 0 || idx > 15) {
+			throw new IllegalArgumentException(
+					"Compression id is out of range (0-15): " + idx);
+		}
+	}
+	
+	/**
+	 * Register a new compression
+	 * 
+	 * @param The
+	 *            compression
+	 * @throws Exception
+	 *             If the adding of the compression failed
+	 */
+	public synchronized void register(final ICompression compression)
 			throws Exception {
 		if(compressionNames.containsKey(compression.getName())) {
 			throw new IllegalArgumentException(
@@ -51,71 +170,40 @@ public class CompressionRegistry {
 							+ " compressions");
 		}
 		
-		if(writePtr == 0 && !(compression instanceof NoCompressionStream)) {
+		if(writePtr == 0 && !(compression instanceof NoCompression)) {
 			throw new Exception(
 					"First compression type should always be no compression");
 		}
 		
-		compressionNames.put(compression.getName(), writePtr);
-		compressions[writePtr++] = compression;
-	}
-	
-	/**
-	 * Swap to compression providers
-	 * 
-	 * @param idx1
-	 * @param idx2
-	 */
-	public void swap(final byte idx1, final byte idx2) {
-		if(idx1 == idx2) {
-			return;
-		}
-		ICompressionStreamProvider tmp = compressions[idx1];
-		compressions[idx1] = compressions[idx2];
-		compressions[idx2] = tmp;
+		int pref =
+			config.getIntProp("compression.preference",
+					compression.getClass().getCanonicalName());
 		
-		compressionNames.put(compressions[idx2].getName(), idx2);
-		compressionNames.put(compressions[idx1].getName(), idx1);
+		DCSkinsLog.debug("Add compression %s at %d, pref %d",
+				compression.getName(), writePtr, pref);
+		
+		// Force no compression to be available
+		if(compression instanceof NoCompression && pref == 0) {
+			pref = 10;
+		}
+		
+		if(pref > 0) {
+			CompressionEntry entry =
+				new CompressionEntry(writePtr, pref, compression);
+			compressionNames.put(compression.getName(), entry);
+			localCompressions[writePtr++] = entry;
+		}
 	}
 	
 	/**
+	 * Get a compression entry by its compression name
+	 * 
 	 * @param name
-	 * @return The index of this compression or -1 if the compression does not
+	 * @return The compression entry or null if the compression does not
 	 *         exists
 	 */
-	public byte getCompressionIdx(final String name) {
-		Byte idx = compressionNames.get(name);
-		if(idx == null) {
-			return -1;
-		}
-		return idx;
-	}
-	
-	/**
-	 * @param name
-	 *            The name of the key generator
-	 * @return The compression provider or null if there is none with that name
-	 */
-	public ICompressionStreamProvider getCompression(final String name) {
-		Byte idx = compressionNames.get(name);
-		if(idx == null) {
-			return null;
-		}
-		return getCompression(idx);
-	}
-	
-	/**
-	 * @param id
-	 *            The id of the key generator
-	 * @return The compression provider or null if there is none with that id
-	 */
-	public ICompressionStreamProvider getCompression(final byte id) {
-		if(id < 0 || id > 15) {
-			throw new IllegalArgumentException(
-					"Compression id is out of range (0-15)");
-		}
-		
-		return compressions[id];
+	public CompressionEntry getCompression(final String name) {
+		return compressionNames.get(name);
 	}
 	
 	/**

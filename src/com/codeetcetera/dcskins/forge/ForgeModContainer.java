@@ -14,6 +14,7 @@ import java.util.Set;
 import com.google.common.eventbus.EventBus;
 
 import com.codeetcetera.dcskins.DCSkinsCore;
+import com.codeetcetera.dcskins.DCSkinsLog;
 
 import cpw.mods.fml.common.LoadController;
 import cpw.mods.fml.common.MetadataCollection;
@@ -166,7 +167,9 @@ public class ForgeModContainer implements ModContainer {
 	 */
 	@Override
 	public boolean matches(final Object mod) {
-		return false;
+		DCSkinsLog.info("Matches called: %s/%s", mod,
+				ForgeDCSkins.getInstance());
+		return mod != null && mod.equals(ForgeDCSkins.getInstance());
 	}
 	
 	/*
@@ -176,6 +179,7 @@ public class ForgeModContainer implements ModContainer {
 	 */
 	@Override
 	public Object getMod() {
+		DCSkinsLog.info("Request for mod instance!");
 		return ForgeDCSkins.getInstance();
 	}
 	
@@ -196,7 +200,7 @@ public class ForgeModContainer implements ModContainer {
 	 */
 	@Override
 	public boolean isImmutable() {
-		return false;
+		return true;
 	}
 	
 	/*
@@ -206,7 +210,13 @@ public class ForgeModContainer implements ModContainer {
 	 */
 	@Override
 	public boolean isNetworkMod() {
-		return true;
+		/*
+		 * Setting this to true crashes on login with a NPE at the check that
+		 * the server has the mod installed.
+		 * Since we don't require the server to have the mod installed we can
+		 * set this to false.
+		 */
+		return false;
 	}
 	
 	/*

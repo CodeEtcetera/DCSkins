@@ -6,6 +6,8 @@ package com.codeetcetera.dcskins.network;
 
 import java.io.IOException;
 
+import com.codeetcetera.dcskins.compression.CompressionEntry;
+
 /**
  * @author CodeEtcetera
  * 
@@ -25,7 +27,7 @@ public abstract class Packet {
 	public static final byte RESPONSE_DISCOVERY = 4;
 	
 	protected byte protocolVersion;
-	protected byte compression;
+	protected CompressionEntry compression;
 	protected byte packetType;
 	
 	/**
@@ -38,7 +40,7 @@ public abstract class Packet {
 	/**
 	 * @return The (de)compression used for this packet
 	 */
-	public byte getCompression() {
+	public CompressionEntry getCompression() {
 		return compression;
 	}
 	

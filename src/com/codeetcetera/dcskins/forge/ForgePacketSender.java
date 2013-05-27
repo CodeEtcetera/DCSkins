@@ -10,8 +10,9 @@ import net.minecraft.network.packet.Packet250CustomPayload;
 
 import com.codeetcetera.dcskins.DCSkinsCore;
 import com.codeetcetera.dcskins.IPacketSender;
-import com.codeetcetera.dcskins.network.InPacket;
-import com.codeetcetera.dcskins.network.OutPacket;
+import com.codeetcetera.dcskins.network.AbstractInPacket;
+import com.codeetcetera.dcskins.network.AbstractOutPacket;
+import com.codeetcetera.dcskins.network.ServerOutPacket;
 
 import cpw.mods.fml.common.network.PacketDispatcher;
 
@@ -25,10 +26,10 @@ public class ForgePacketSender implements IPacketSender {
 	 * 
 	 * @see
 	 * com.codeetcetera.dcskins.IPacketSender#sendToServer(com.codeetcetera.
-	 * dcskins.network.OutPacket)
+	 * dcskins.network.AbstractOutPacket)
 	 */
 	@Override
-	public void sendToServer(final OutPacket packet) throws IOException {
+	public void sendToServer(final AbstractOutPacket packet) throws IOException {
 		Packet250CustomPayload p = new Packet250CustomPayload();
 		p.channel = DCSkinsCore.PACKET_CHANNEL;
 		p.data = packet.getPacketData();
@@ -41,17 +42,17 @@ public class ForgePacketSender implements IPacketSender {
 	 * 
 	 * @see
 	 * com.codeetcetera.dcskins.IPacketSender#sendPlayerResponse(com.codeetcetera
-	 * .dcskins.network.OutPacket, com.codeetcetera.dcskins.network.InPacket)
+	 * .dcskins.network.ServerOutPacket,
+	 * com.codeetcetera.dcskins.network.AbstractInPacket)
 	 */
 	@Override
-	public void sendPlayerResponse(final OutPacket response,
-			final InPacket inPacket) throws IOException {
+	public void sendPlayerResponse(final ServerOutPacket response,
+			final AbstractInPacket inPacket) throws IOException {
 		Packet250CustomPayload packet = new Packet250CustomPayload();
 		packet.channel = DCSkinsCore.PACKET_CHANNEL;
 		packet.data = response.getPacketData();
 		packet.length = packet.data.length;
 		PacketDispatcher.sendPacketToPlayer(packet,
-				((ForgeInPacket) inPacket).getPlayer());
+				((ForgeServerInPacket) inPacket).getPlayer());
 	}
-	
 }

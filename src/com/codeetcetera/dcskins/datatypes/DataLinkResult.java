@@ -23,14 +23,18 @@ public class DataLinkResult {
 	}
 	
 	/**
-	 * @return the user
+	 * Get the user the linking resulted in
+	 * 
+	 * @return The user
 	 */
 	public String getUser() {
 		return user;
 	}
 	
 	/**
-	 * @return the identifier
+	 * Get the data type the linking resulted in
+	 * 
+	 * @return The identifier
 	 */
 	public byte getIdentifier() {
 		return identifier;

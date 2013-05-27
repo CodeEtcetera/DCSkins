@@ -21,6 +21,7 @@ import com.google.common.base.Throwables;
 import com.codeetcetera.dcskins.CommonClient;
 import com.codeetcetera.dcskins.DCSkinsCore;
 import com.codeetcetera.dcskins.DCSkinsLog;
+import com.codeetcetera.dcskins.network.ClientInPacket;
 
 import cpw.mods.fml.common.network.IConnectionHandler;
 import cpw.mods.fml.common.network.IPacketHandler;
@@ -45,6 +46,7 @@ public class ForgeClientProxy extends CommonClient implements IPacketHandler,
 				DCSkinsCore.PACKET_CHANNEL);
 		// Register for client login/logout events
 		NetworkRegistry.instance().registerConnectionHandler(this);
+		DCSkinsLog.debug("Registering done!");
 	}
 	
 	/**
@@ -55,6 +57,7 @@ public class ForgeClientProxy extends CommonClient implements IPacketHandler,
 	 */
 	@ForgeSubscribe
 	public void onSave(final WorldEvent.Save event) throws IOException {
+		DCSkinsLog.debug("World save!");
 		onSave();
 	}
 	
@@ -66,6 +69,7 @@ public class ForgeClientProxy extends CommonClient implements IPacketHandler,
 	 */
 	@ForgeSubscribe
 	public void onWorldUnload(final WorldEvent.Unload event) throws IOException {
+		DCSkinsLog.debug("World unload!");
 		onSave();
 	}
 	
@@ -81,8 +85,9 @@ public class ForgeClientProxy extends CommonClient implements IPacketHandler,
 	@Override
 	public void onPacketData(final INetworkManager manager,
 			final Packet250CustomPayload packet, final Player player) {
+		DCSkinsLog.debug("Incoming packet!");
 		try {
-			onIncomingPacket(new ForgeInPacket(packet.data, player));
+			onIncomingPacket(new ClientInPacket(packet.data));
 		} catch(IOException e) {
 			DCSkinsLog.warning("Error on incoming packet: %s",
 					Throwables.getStackTraceAsString(e));
@@ -151,6 +156,7 @@ public class ForgeClientProxy extends CommonClient implements IPacketHandler,
 	 */
 	@Override
 	public void connectionClosed(final INetworkManager manager) {
+		DCSkinsLog.debug("Client logged out!");
 		try {
 			onLogout();
 		} catch(IOException e) {
@@ -170,8 +176,9 @@ public class ForgeClientProxy extends CommonClient implements IPacketHandler,
 	@Override
 	public void clientLoggedIn(final NetHandler clientHandler,
 			final INetworkManager manager, final Packet1Login login) {
+		DCSkinsLog.debug("Client logged in!");
 		try {
-			onLogin(clientHandler.getPlayer().username);
+			onLogin();
 		} catch(IOException e) {
 			DCSkinsLog.severe("Error on client login: %s",
 					Throwables.getStackTraceAsString(e));

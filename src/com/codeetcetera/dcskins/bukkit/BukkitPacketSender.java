@@ -8,8 +8,9 @@ import java.io.IOException;
 
 import com.codeetcetera.dcskins.DCSkinsCore;
 import com.codeetcetera.dcskins.IPacketSender;
-import com.codeetcetera.dcskins.network.InPacket;
-import com.codeetcetera.dcskins.network.OutPacket;
+import com.codeetcetera.dcskins.network.AbstractInPacket;
+import com.codeetcetera.dcskins.network.AbstractOutPacket;
+import com.codeetcetera.dcskins.network.ServerOutPacket;
 
 /**
  * @author CodeEtcetera
@@ -21,11 +22,12 @@ public class BukkitPacketSender implements IPacketSender {
 	 * 
 	 * @see
 	 * com.codeetcetera.dcskins.IPacketSender#sendToServer(com.codeetcetera.
-	 * dcskins.network.OutPacket)
+	 * dcskins.network.AbstractOutPacket)
 	 */
 	@Override
-	public void sendToServer(final OutPacket packet) throws IOException {
-		throw new IOException("Not implemented on bukkit");
+	public void sendToServer(final AbstractOutPacket packet) throws IOException {
+		throw new IOException(
+				"Sending packets to server is not implemented for bukkit");
 	}
 	
 	/*
@@ -33,11 +35,12 @@ public class BukkitPacketSender implements IPacketSender {
 	 * 
 	 * @see
 	 * com.codeetcetera.dcskins.IPacketSender#sendPlayerResponse(com.codeetcetera
-	 * .dcskins.network.OutPacket, com.codeetcetera.dcskins.network.InPacket)
+	 * .dcskins.network.ServerOutPacket,
+	 * com.codeetcetera.dcskins.network.AbstractInPacket)
 	 */
 	@Override
-	public void sendPlayerResponse(final OutPacket response,
-			final InPacket inPacket) throws IOException {
+	public void sendPlayerResponse(final ServerOutPacket response,
+			final AbstractInPacket inPacket) throws IOException {
 		((BukkitInPacket) inPacket).getPlayer().sendPluginMessage(
 				BukkitDCSkins.getInstance(), DCSkinsCore.PACKET_CHANNEL,
 				response.getPacketData());

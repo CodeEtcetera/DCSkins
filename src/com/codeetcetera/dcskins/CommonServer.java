@@ -10,14 +10,15 @@ import java.io.IOException;
 import com.codeetcetera.dcskins.cache.IDataCache;
 import com.codeetcetera.dcskins.cache.IKeyCache;
 import com.codeetcetera.dcskins.cache.IKeyGenerator;
+import com.codeetcetera.dcskins.compression.CompressionEntry;
 import com.codeetcetera.dcskins.compression.CompressionRegistry;
-import com.codeetcetera.dcskins.compression.GzipCompressionStream;
-import com.codeetcetera.dcskins.compression.ICompressionStreamProvider;
-import com.codeetcetera.dcskins.compression.NoCompressionStream;
+import com.codeetcetera.dcskins.compression.GzipCompression;
+import com.codeetcetera.dcskins.compression.ICompression;
+import com.codeetcetera.dcskins.compression.NoCompression;
 import com.codeetcetera.dcskins.datatypes.CapeDataType;
 import com.codeetcetera.dcskins.datatypes.DataTypeRegistry;
 import com.codeetcetera.dcskins.datatypes.SkinDataType;
-import com.codeetcetera.dcskins.network.InPacket;
+import com.codeetcetera.dcskins.network.AbstractInPacket;
 import com.codeetcetera.dcskins.network.Packet;
 import com.codeetcetera.dcskins.network.ResponseDataPacket;
 import com.codeetcetera.dcskins.network.ResponseDiscoveryPacket;
@@ -53,12 +54,14 @@ public abstract class CommonServer {
 		dataTypeRegistry = DataTypeRegistry.getInstance();
 		
 		// Register default compression types
-		compressionRegistry.register(new NoCompressionStream());
-		compressionRegistry.register(new GzipCompressionStream());
+		compressionRegistry.register(new NoCompression());
+		compressionRegistry.register(new GzipCompression());
 		
 		// Register default data types
 		dataTypeRegistry.register(new SkinDataType());
 		dataTypeRegistry.register(new CapeDataType());
+		
+		DCSkinsLog.debug("CommonServer Constructed");
 	}
 	
 	public void init() throws Exception {
@@ -66,9 +69,13 @@ public abstract class CommonServer {
 		StartupVerifier verifier = new StartupVerifier();
 		verifier.verifyGlobal();
 		verifier.verifyCache();
+		verifier.verifyDataDirectory();
 		
 		DCSkinsConfig config = DCSkinsConfig.getInstance();
-		GzipCompressionStream gzip = new GzipCompressionStream();
+		ICompression compression =
+			(ICompression) Class.forName(
+					config.getStringProp("cache.compression.class"))
+								.getConstructor().newInstance();
 		keyGen =
 			(IKeyGenerator) Class.forName(
 					config.getStringProp("cache.keygen.class"))
@@ -76,16 +83,14 @@ public abstract class CommonServer {
 		keyCache =
 			(IKeyCache) Class.forName(
 					config.getStringProp("cache.keycache.class"))
-								.getConstructor(
-										ICompressionStreamProvider.class,
+								.getConstructor(ICompression.class,
 										IKeyGenerator.class)
-								.newInstance(gzip, keyGen);
+								.newInstance(compression, keyGen);
 		dataCache =
 			(IDataCache) Class.forName(
 					config.getStringProp("cache.datacache.class"))
-								.getConstructor(
-										ICompressionStreamProvider.class)
-								.newInstance(gzip);
+								.getConstructor(ICompression.class)
+								.newInstance(compression);
 		
 		// Load local defaults
 		localDataReader = new LocalDataReader();
@@ -105,10 +110,10 @@ public abstract class CommonServer {
 		lastDataCacheUpdate = lastKeyCacheUpdate;
 	}
 	
-	public void onIncomingPacket(final InPacket packet) throws IOException {
+	public void onIncomingPacket(final AbstractInPacket packet)
+			throws IOException {
 		DataInputStream in = packet.getStream();
 		
-		byte first = in.readByte();
 		// Only handle the request if the protocol version matches
 		if(packet.usesCorrectProtocol()) {
 			if(packet.getPacketType() != Packet.PACKETTYPE_DSC) {
@@ -124,7 +129,7 @@ public abstract class CommonServer {
 	}
 	
 	protected void handlePacket(final byte dataType, final String user,
-			final InPacket packet) throws IOException {
+			final AbstractInPacket packet) throws IOException {
 		switch(packet.getPacketType()) {
 			case Packet.PACKETTYPE_REQ:
 				handleRequest(dataType, user, packet);
@@ -158,7 +163,7 @@ public abstract class CommonServer {
 	
 	// Handle a request for data
 	private void handleRequest(final byte dataType, final String user,
-			final InPacket packet) throws IOException {
+			final AbstractInPacket packet) throws IOException {
 		DCSkinsLog.debug("S REQ: " + user + "~" + dataType);
 		byte[] data = null;
 		if(keyCache.inCache(user, dataType)) {
@@ -185,7 +190,7 @@ public abstract class CommonServer {
 	
 	// Handle data being pushed to the server
 	private void handlePush(final byte dataType, final String user,
-			final InPacket packet) throws IOException {
+			final AbstractInPacket packet) throws IOException {
 		DataInputStream in = packet.getStream();
 		DCSkinsLog.debug("S PSH: " + user + "~" + dataType);
 		// Length of the data
@@ -234,7 +239,7 @@ public abstract class CommonServer {
 	
 	// Handle a verification of the client cache request
 	private void handleVerify(final byte dataType, final String user,
-			final InPacket packet) throws IOException {
+			final AbstractInPacket packet) throws IOException {
 		DCSkinsLog.debug("S VFY: " + user + "~" + dataType);
 		// Read the key as UTF-8
 		String key = packet.getStream().readUTF();
@@ -250,7 +255,8 @@ public abstract class CommonServer {
 	}
 	
 	// Handle a discovery request
-	private void handleDiscovery(final InPacket packet) throws IOException {
+	private void handleDiscovery(final AbstractInPacket packet)
+			throws IOException {
 		DataInputStream in = packet.getStream();
 		DCSkinsLog.debug("S DSC");
 		
@@ -259,7 +265,7 @@ public abstract class CommonServer {
 			 * Server is also the client itself (LAN server) send unknown back
 			 * to satisfy the request.
 			 */
-			packetSender.sendPlayerResponse(new ResponseUnknownPacket((byte) 0,
+			packetSender.sendPlayerResponse(new ResponseUnknownPacket(null,
 					(byte) 0, ""), packet);
 			return;
 		}
@@ -270,11 +276,11 @@ public abstract class CommonServer {
 		byte writePtr = 0;
 		CompressionRegistry reg = CompressionRegistry.getInstance();
 		for(byte i = 0; i < num; i++) {
-			byte idx = reg.getCompressionIdx(in.readUTF());
+			CompressionEntry entry = reg.getCompression(in.readUTF());
 			
 			// Does the server know this compression
-			if(idx != -1) {
-				indices[writePtr++] = idx;
+			if(entry != null && entry.getPreference() > 0) {
+				indices[writePtr++] = entry.getLocalIdx();
 			}
 		}
 		
